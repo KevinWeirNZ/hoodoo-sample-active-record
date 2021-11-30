@@ -1,14 +1,30 @@
 class PersonImplementation < Hoodoo::Services::Implementation
 
+  # def show( context )
+  #   person = Person.acquire_in!( context )
+  #   return if context.response.halt_processing?
+  #   context.response.set_resources( render_in( context, person ) )
+  # end
   def show( context )
-    person = Person.acquire_in!( context )
-    return if context.response.halt_processing?
-    context.response.set_resources( render_in( context, person ) )
+    person = Person.acquire_in( context )
+    if person.nil?
+      context.response.not_found( context.request.ident )
+    else
+      context.response.set_resource( render_in( context, person ) )
+    end
   end
 
   def list( context )
-    context.request.list.limitv= 1000 if context.request.list.limit > 1000 # Limit the size of page size a caller can request.
+    # context.request.list.limitv= 1000 if context.request.list.limit > 1000 # Limit the size of page size a caller can request.
     finder = Person.list_in( context )
+    birth_year = context.request.list.search_data['birth_year'].to_i
+
+    unless birth_year.zero?
+      this_year_start = Date.new( birth_year )
+      next_year_start = Date.new(birth_year + 1 )
+      finder = finder.where( :date_of_birth => (this_year_start ... next_year_start))
+    end
+
     list = finder.all.map { | person | render_in( context, person ) }
     context.response.set_resources( list, finder.dataset_size )
   end

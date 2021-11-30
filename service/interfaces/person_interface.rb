@@ -8,9 +8,9 @@ class PersonInterface < Hoodoo::Services::Interface
     end
 
     update_same_as_create
-  end
 
-  to_list do
-    search :partial_name, :birth_year
+    to_list do
+      search :partial_name, :birth_year
+    end
   end
 end

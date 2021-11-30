@@ -1,5 +1,5 @@
 class CreatePeople < ActiveRecord::Migration[5.1]
-  def up
+  def self.up
 
     # Note important use of ":id => :string" to define a
     # non-numeric primary key that can accept a UUID.
@@ -18,7 +18,7 @@ class CreatePeople < ActiveRecord::Migration[5.1]
 
   end
 
-  def down
+  def self.down
     drop_table :people
   end
 end
