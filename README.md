@@ -145,6 +145,56 @@ bundle exec rake rerdoc
 * ActiveSupport is included by the Gemfile but *not automatically required* as it slows down service startup due to the number of Ruby files it includes. Things like `obj.present?`, `nil.try(...)` and `HashWithIndifferentAccess` _are_ available, but only if you `require 'active_support/all'` (not recommended) or just the things you need with e.g. `require 'active_support/core_ext/string'` (recommended).
 
 
+## Curl commands for manual testing
+
+List
+`curl http://localhost:9292/v1/people \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+Create
+`curl http://localhost:9292/v1/people \
+     --data '{"name":"Bob Two","date_of_birth":"1956-02-01"}' \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+`curl http://localhost:9292/v1/people \
+     --data '{"name":"Alice"}' \
+     --header "Content-Type: application/json; charset=utf-8" \
+     --header "X-Resource-UUID: 444da4986d704f1d827116e90d8b6bb1" | jq .`
+
+show
+`curl http://localhost:9292/v1/people/444da4986d704f1d827116e90d8b6bb1 \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+Patch
+`curl http://localhost:9292/v1/people/444da4986d704f1d827116e90d8b6bb1 \
+     --request PATCH \
+     --data '{"name":"Alice Smith"}' \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+Delete
+`curl http://localhost:9292/v1/people/444da4986d704f1d827116e90d8b6bb1 \
+     --request DELETE \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+Search birth year and name
+`curl 'http://localhost:9292/v1/people?search=partial_name%3Dalice%26birth_year%3D1975' \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+unrecognised commands:
+
+Post
+`curl http://localhost:9292/v1/people \
+     --data '{"name":"Alice 2", "something":"unrecognised"}' \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+Patch
+`curl http://localhost:9292/v1/people/444da4986d704f1d827116e90d8b6bb1 \
+     --request PATCH \
+     --data '{"something":"unrecognised"}' \
+     --header "Content-Type: application/json; charset=utf-8" | jq .`
+
+
+List
+`curl http://localhost:9292/v1/people`
 
 ## Licence
 
