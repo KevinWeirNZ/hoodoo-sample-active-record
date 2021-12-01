@@ -15,7 +15,7 @@ class PersonImplementation < Hoodoo::Services::Implementation
   end
 
   def list( context )
-    # context.request.list.limitv= 1000 if context.request.list.limit > 1000 # Limit the size of page size a caller can request.
+    context.request.list.limit= 1000 if context.request.list.limit > 1000 # Limit the size of page size a caller can request.
     finder = Person.list_in( context )
     birth_year = context.request.list.search_data['birth_year'].to_i
 
