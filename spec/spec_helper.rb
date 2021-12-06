@@ -4,6 +4,7 @@
 
 # First, configure the code coverage analyser. This has to be done here, not in
 # an externally included file, to work properly.
+require 'rack/test' # For including rack::Test::Method in the spec files.
 
 require 'simplecov'
 require 'simplecov-rcov'

@@ -89,6 +89,8 @@
     #
     gem 'thor'
 
+    gem 'json_spec'
+
   end
 
   group :test do

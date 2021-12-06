@@ -17,18 +17,18 @@
 #   cases, so 100% code coverage doesn't mean 100% effective testing; but less
 #   than 100% certainly does mean you have a test omission.
 
-require 'spec_helper'
+# require 'spec_helper'
 
-RSpec.describe 'shell without configured service' do
-  it 'should raise an exception' do
+# RSpec.describe 'shell without configured service' do
+#   it 'should raise an exception' do
 
-    # See top-level "service.rb".
+#     # See top-level "service.rb".
 
-    expect {
-      get '/v1/anything', nil, { 'CONTENT_TYPE' => 'application/json; charset=utf-8' }
-    }.to raise_error(
-      RuntimeError,
-      "Write one or more classes in service/implementations and service/interfaces, then refer to the interfaces here via 'comprised_of'"
-    )
-  end
-end
+#     expect {
+#       get '/v1/anything', nil, { 'CONTENT_TYPE' => 'application/json; charset=utf-8' }
+#     }.to raise_error(
+#       RuntimeError,
+#       "Write one or more classes in service/implementations and service/interfaces, then refer to the interfaces here via 'comprised_of'"
+#     )
+#   end
+# end
