@@ -10,7 +10,14 @@ class PersonInterface < Hoodoo::Services::Interface
     update_same_as_create
 
     to_list do
-      search :partial_name, :birth_year, :before_date, :after_date
+      search :partial_name,
+             :date_of_birth_year,
+             :date_of_birth_year_before,
+             :date_of_birth_year_after,
+             :date_of_birth,
+             :date_of_birth_before,
+             :date_of_birth_after
+
     end
   end
 end

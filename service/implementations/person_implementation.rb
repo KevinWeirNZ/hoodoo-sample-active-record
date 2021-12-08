@@ -9,41 +9,65 @@ class PersonImplementation < Hoodoo::Services::Implementation
     end
   end
 
+  # TODO in list:
+  # tidy up and refactor
   def list( context )
     context.request.list.limit= 1000 if context.request.list.limit > 1000 # Limit the size of page size a caller can request.
     finder = Person.list_in( context )
-    birth_year = context.request.list.search_data['birth_year'].to_i
-    before_date = context.request.list.search_data['before_date'].to_i
-    after_date = context.request.list.search_data['after_date'].to_i
 
-    if before_date.zero? & after_date.zero?
-      unless birth_year.zero?
-        this_year_start = Date.new( birth_year )
-        next_year_start = Date.new(birth_year + 1 )
-        finder = finder.where( :date_of_birth => (this_year_start ... next_year_start))
+    # year
+    date_of_birth_year        = context.request.list.search_data[ 'date_of_birth_year'         ].to_i
+    date_of_birth_year_after  = context.request.list.search_data[ 'date_of_birth_year_after'   ].to_i
+    date_of_birth_year_before = context.request.list.search_data[ 'date_of_birth_year_before'  ].to_i
+
+    # date of birth
+    date_of_birth             = context.request.list.search_data[ 'date_of_birth'              ].to_s
+    date_of_birth_after       = context.request.list.search_data[ 'date_of_birth_after'        ].to_s
+    date_of_birth_before      = context.request.list.search_data[ 'date_of_birth_before'       ].to_s
+
+    #minimum and maximum dates for postgres
+    minimum_date = Date.parse( '4713-01-01 BCE' )
+    maximum_date = Date.parse( '294276-01-01'   )
+
+    # If no values have been provided for any of the 'date of birth variables'
+    if date_of_birth.empty? & date_of_birth_before.empty? & date_of_birth_after.empty?
+      # search for an exact date of birth year
+      if date_of_birth_year_before.zero? & date_of_birth_year_after.zero? & !date_of_birth_year.zero?
+        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year ) ... Date.new( date_of_birth_year + 1 ) ) )
+      # Search for all entries before date of birth year.
+      elsif date_of_birth_year.zero? & date_of_birth_year_after.zero? & !date_of_birth_year_before.zero?
+        finder = finder.where( :date_of_birth => ( minimum_date ... Date.new( date_of_birth_year_before ) ) )
+      # Search for all entries after date of birth year
+      elsif date_of_birth_year.zero? & date_of_birth_year_before.zero? & !date_of_birth_year_after.zero?
+        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_after + 1 ) ... maximum_date ) )
+      # Search for all entries between two given dates - date_of_birth_year_before and date_of_birth_year_after.
+      elsif date_of_birth_year.zero? & !date_of_birth_year_before.zero? & !date_of_birth_year_after.zero?
+        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_before - 1 ) ... Date.new(date_of_birth_year_after + 1 ) ) )
       end
-    elsif
-      # This is the functionality for searching all records with a birth year after a given year.
-      unless after_date.zero?
-        long_after_date = Date.new( birth_year + 1000 )
-        after_date = Date.new( birth_year + 1 )
-        finder = finder.where( :date_of_birth => (after_date ... long_after_date))
-      end
-    else
-      # This is the functionality for searching all records with a birth year before a given year.
-      unless before_date.zero?
-        years_ago = Date.new(birth_year - 150)
-        before_date = Date.new( birth_year )
-        finder = finder.where( :date_of_birth => (years_ago ... before_date))
+
+    # If no values have been provided for any of the 'date of birth year variables'
+    elsif date_of_birth_year.zero? & date_of_birth_year_before.zero? & date_of_birth_year_after.zero?
+      # Search for all entries that exactly equal the given date of birth.
+      if date_of_birth_before.empty? & date_of_birth_after.empty? & !date_of_birth.empty?
+        date_of_birth   = Date.parse( date_of_birth )
+        finder = finder.where( :date_of_birth => ( date_of_birth ... ( date_of_birth + 1.days   ) ) )
+      # Search for all entries before date of birth.
+      elsif date_of_birth.empty? & date_of_birth_after.empty? & !date_of_birth_before.empty?
+        finder = finder.where( :date_of_birth => ( minimum_date ... Date.parse( date_of_birth_before ) ) )
+      # Search for all entries after date of birth.
+      elsif date_of_birth.empty? & date_of_birth_before.empty? & !date_of_birth_after.empty?
+        finder = finder.where( :date_of_birth => ( Date.parse( date_of_birth_after ) ... maximum_date ) )
+      # Search for all entries between two given dates - date_of_birth_before and date_of_birth_after.
+      elsif date_of_birth.empty? & !date_of_birth_before.empty? & !date_of_birth_after.empty?
+        date_of_birth_before   = Date.parse( date_of_birth_before )
+        date_of_birth_after    = Date.parse( date_of_birth_after  )
+        finder = finder.where( :date_of_birth => ( ( date_of_birth_before - 1 ) ... ( date_of_birth_after + 1 ) ) )
       end
     end
 
     list = finder.all.map { | person | render_in( context, person ) }
     context.response.set_resources( list, finder.dataset_size )
   end
-
-
-
 
   def create( context )
     person = Person.new_in( context, context.request.body )
@@ -105,5 +129,4 @@ class PersonImplementation < Hoodoo::Services::Implementation
       options
     )
   end
-
 end
