@@ -42,7 +42,7 @@ class PersonImplementation < Hoodoo::Services::Implementation
         finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_after + 1 ) ... maximum_date ) )
       # Search for all entries between two given dates - date_of_birth_year_before and date_of_birth_year_after.
       elsif date_of_birth_year.zero? & !date_of_birth_year_before.zero? & !date_of_birth_year_after.zero?
-        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_before - 1 ) ... Date.new(date_of_birth_year_after + 1 ) ) )
+        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_after - 1 ) ... Date.new(date_of_birth_year_before + 1 ) ) )
       end
 
     # If no values have been provided for any of the 'date of birth year variables'
@@ -61,12 +61,12 @@ class PersonImplementation < Hoodoo::Services::Implementation
       elsif date_of_birth.empty? & !date_of_birth_before.empty? & !date_of_birth_after.empty?
         date_of_birth_before   = Date.parse( date_of_birth_before )
         date_of_birth_after    = Date.parse( date_of_birth_after  )
-        finder = finder.where( :date_of_birth => ( ( date_of_birth_before - 1 ) ... ( date_of_birth_after + 1 ) ) )
+        finder = finder.where( :date_of_birth => ( ( date_of_birth_after - 1 ) ... ( date_of_birth_before + 1 ) ) )
       end
     end
-
-    list = finder.all.map { | person | render_in( context, person ) }
-    context.response.set_resources( list, finder.dataset_size )
+    byebug
+      list = finder.all.map { | person | render_in( context, person ) }
+      context.response.set_resources( list, finder.dataset_size )
   end
 
   def create( context )

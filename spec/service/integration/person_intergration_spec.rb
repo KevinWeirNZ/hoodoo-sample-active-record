@@ -255,6 +255,7 @@ RSpec.describe 'Person integration' do
         encoded_search = URI.encode_www_form( search )
         query = '?' << URI.encode_www_form( 'search' => encoded_search )
       end
+      byebug
       response = get(
         "/1/Person#{ query }",
         nil,
@@ -289,12 +290,13 @@ RSpec.describe 'Person integration' do
         @p2 = FactoryBot.create( :person, :name => 'John 2',    :date_of_birth => '2002-09-04' )
         @p3 = FactoryBot.create( :person, :name => 'Dylan 1',   :date_of_birth => '2000-11-23' )
         @p4 = FactoryBot.create( :person, :name => 'Dylan 2',   :date_of_birth => '1996-02-01' )
+        @p5 = FactoryBot.create( :person, :name => 'Dylan 3',   :date_of_birth => '1996-02-01' )
       end
 
       it "lists all entries" do
         res = do_list('')
-        compare_lists(res, @p4, @p3, @p2, @p1)
-        expect(last_response.body).to have_json_size(4).at_path("_data")
+        compare_lists(res, @p5, @p4, @p3, @p2, @p1)
+        expect(last_response.body).to have_json_size(5).at_path("_data")
       end
 
       # Testing the search functionality
@@ -307,7 +309,7 @@ RSpec.describe 'Person integration' do
 
         it "searches for those born before 2000" do
           res = do_list( :date_of_birth_year_before => '2000')
-          compare_lists(res, @p4)
+          compare_lists(res, @p5, @p4)
         end
 
         it "searches for those born after 2000" do
@@ -316,8 +318,9 @@ RSpec.describe 'Person integration' do
         end
 
         it "searches for those born between 1996 and 2000" do
-          res = do_list( :date_of_birth_year_before => '1996', :date_of_birth_year_after => '2000' )
-          compare_lists(res, @p4, @p3)
+          res = do_list( :date_of_birth_year_before => '2000', :date_of_birth_year_after => '1996' )
+
+          compare_lists(res, @p5, @p4, @p3)
         end
       end
 
@@ -329,7 +332,7 @@ RSpec.describe 'Person integration' do
 
         it "searches for those born before 2000-11-23" do
           res = do_list( :date_of_birth_before => '2000-11-23')
-          compare_lists(res, @p4)
+          compare_lists(res, @p5, @p4)
         end
 
         it "searches for those born after 2000-11-23" do
@@ -338,8 +341,25 @@ RSpec.describe 'Person integration' do
         end
 
         it "searches for those born between 1996 and 2000" do
-          res = do_list( :date_of_birth_before => '1996-02-01', :date_of_birth_after => '2002-03-01' )
-          compare_lists(res, @p4, @p3, @p1)
+          res = do_list( :date_of_birth_before => '2002-03-01', :date_of_birth_after => '1996-02-01' )
+          compare_lists(res, @p5, @p4, @p3, @p1)
+        end
+
+        # test wrong parameters
+        it "checks that date_of_birth_after is not larger than date_of_birth_before" do
+          res = do_list( :date_of_birth_after => '2002-03-01', :date_of_birth_before => '1996-02-01' )
+          expect(last_response.body).to have_json_size(0).at_path("_data")
+        end
+
+        # test timestamps
+        it "checks that no errors occur when passing through a timestamp" do
+          res = do_list( :date_of_birth_before => '2002-03-01T00:00:00', :date_of_birth_after => '1996-02-01T00:00:00' )
+          compare_lists(res, @p5, @p4, @p3, @p1)
+        end
+
+        it "searches for those born in 2000" do
+          res = do_list( :date_of_birth_year => '2000T12:01:01')
+          compare_lists(res, @p3)
         end
       end
     end
