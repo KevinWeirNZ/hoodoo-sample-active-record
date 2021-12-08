@@ -255,7 +255,6 @@ RSpec.describe 'Person integration' do
         encoded_search = URI.encode_www_form( search )
         query = '?' << URI.encode_www_form( 'search' => encoded_search )
       end
-      byebug
       response = get(
         "/1/Person#{ query }",
         nil,
@@ -300,7 +299,6 @@ RSpec.describe 'Person integration' do
       end
 
       # Testing the search functionality
-
       context "Search by year" do
         it "searches for those born in 2000" do
           res = do_list( :date_of_birth_year => '2000')

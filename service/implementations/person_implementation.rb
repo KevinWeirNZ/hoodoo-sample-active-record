@@ -64,7 +64,6 @@ class PersonImplementation < Hoodoo::Services::Implementation
         finder = finder.where( :date_of_birth => ( ( date_of_birth_after - 1 ) ... ( date_of_birth_before + 1 ) ) )
       end
     end
-    byebug
       list = finder.all.map { | person | render_in( context, person ) }
       context.response.set_resources( list, finder.dataset_size )
   end
