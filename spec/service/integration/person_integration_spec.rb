@@ -266,6 +266,23 @@ RSpec.describe 'Person integration' do
       return JSON.parse( last_response.body )
     end
 
+    # Method expects the http status code to return 422 when an incorrectly formatted search query is provided.
+    def do_list_fail( search = {}, expected_code = 422 )
+      query = ''
+      unless search.empty?
+        encoded_search = URI.encode_www_form( search )
+        query = '?' << URI.encode_www_form( 'search' => encoded_search )
+      end
+      response = get(
+        "/1/Person#{ query }",
+        nil,
+        { 'CONTENT_TYPE' => 'application/json; charset=utf-8' })
+      expect( last_response.status).to(
+        eq( expected_code )
+      )
+      return last_response.body
+    end
+
     # compares resource being returned in the service response agains the models created by FactoryBot that are expected to be found in the services response.
     def compare_lists( resources, *models )
       models.each_with_index do | model, index |
@@ -294,7 +311,7 @@ RSpec.describe 'Person integration' do
 
       it "lists all entries" do
         res = do_list('')
-        compare_lists(res, @p5, @p4, @p3, @p2, @p1)
+        compare_lists(res, @p4, @p5, @p3, @p1, @p2)
         expect(last_response.body).to have_json_size(5).at_path("_data")
       end
 
@@ -307,18 +324,41 @@ RSpec.describe 'Person integration' do
 
         it "searches for those born before 2000" do
           res = do_list( :date_of_birth_year_before => '2000')
-          compare_lists(res, @p5, @p4)
+          compare_lists(res, @p4, @p5)
         end
 
         it "searches for those born after 2000" do
           res = do_list( :date_of_birth_year_after => '2000')
-          compare_lists(res, @p2, @p1)
+          compare_lists(res, @p3, @p1, @p2)
         end
 
         it "searches for those born between 1996 and 2000" do
           res = do_list( :date_of_birth_year_before => '2000', :date_of_birth_year_after => '1996' )
+          compare_lists(res, @p4, @p5)
+        end
 
-          compare_lists(res, @p5, @p4, @p3)
+        # test parameters in the wrong order.
+        it "checks that date_of_year_birth_after is not larger than date_of_birth_year_before" do
+          res = do_list_fail( :date_of_birth_year_before => '1996-02-01', :date_of_birth_year_after => '2002-03-01' )
+          message = %(
+            {
+              "errors": [
+                {
+                  "code": "generic.invalid_parameters",
+                  "message": "invalid date range date_of_birth_after should not be larger than date_of_birth_before",
+                  "reference": "date_of_birth"
+                }
+              ],
+              "kind": "Errors"
+              }
+            )
+          expect(res).to be_json_eql(message).excluding("interaction_id")
+        end
+
+        # Test timestamps containing time data do not cause an error
+        it "searches for those born in 2000" do
+          res = do_list( :date_of_birth_year => '2000T12:01:01')
+          compare_lists(res, @p3)
         end
       end
 
@@ -330,34 +370,41 @@ RSpec.describe 'Person integration' do
 
         it "searches for those born before 2000-11-23" do
           res = do_list( :date_of_birth_before => '2000-11-23')
-          compare_lists(res, @p5, @p4)
+          compare_lists(res, @p4, @p5)
         end
 
         it "searches for those born after 2000-11-23" do
           res = do_list( :date_of_birth_after => '2000-11-23')
-          compare_lists(res, @p3, @p2 ,@p1)
+          compare_lists(res, @p3, @p1 ,@p2)
         end
 
         it "searches for those born between 1996 and 2000" do
           res = do_list( :date_of_birth_before => '2002-03-01', :date_of_birth_after => '1996-02-01' )
-          compare_lists(res, @p5, @p4, @p3, @p1)
+          compare_lists(res, @p4, @p5, @p3, @p1)
         end
 
-        # test wrong parameters
+        # test parameters in the wrong order.
         it "checks that date_of_birth_after is not larger than date_of_birth_before" do
-          res = do_list( :date_of_birth_after => '2002-03-01', :date_of_birth_before => '1996-02-01' )
-          expect(last_response.body).to have_json_size(0).at_path("_data")
+          res = do_list_fail( :date_of_birth_before => '1996-02-01', :date_of_birth_after => '2002-03-01' )
+          message = %(
+            {
+              "errors": [
+                {
+                  "code": "generic.invalid_parameters",
+                  "message": "invalid date range date_of_birth_after should not be larger than date_of_birth_before",
+                  "reference": "date_of_birth"
+                }
+              ],
+              "kind": "Errors"
+              }
+            )
+          expect(res).to be_json_eql(message).excluding("interaction_id")
         end
 
-        # test timestamps
+        # Test timestamps containing time data do not cause an error
         it "checks that no errors occur when passing through a timestamp" do
-          res = do_list( :date_of_birth_before => '2002-03-01T00:00:00', :date_of_birth_after => '1996-02-01T00:00:00' )
-          compare_lists(res, @p5, @p4, @p3, @p1)
-        end
-
-        it "searches for those born in 2000" do
-          res = do_list( :date_of_birth_year => '2000T12:01:01')
-          compare_lists(res, @p3)
+          res = do_list( :date_of_birth_before => '2002-03-01T01:01:01', :date_of_birth_after => '1996-02-01T00:00:00' )
+          compare_lists(res, @p4, @p5, @p3, @p1)
         end
       end
     end

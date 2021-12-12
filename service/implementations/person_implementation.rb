@@ -9,63 +9,39 @@ class PersonImplementation < Hoodoo::Services::Implementation
     end
   end
 
-  # TODO in list:
-  # tidy up and refactor
+
   def list( context )
     context.request.list.limit= 1000 if context.request.list.limit > 1000 # Limit the size of page size a caller can request.
+
+    # Parse and validate the date search parameters
+    # Date of birth
+    dob        = validate_date_field( context, 'date_of_birth'        )
+    dob_after  = validate_date_field( context, 'date_of_birth_after'  )
+    dob_before = validate_date_field( context, 'date_of_birth_before' )
+    validate_date_range( context, dob_after, dob_before )
+
+    # Year only
+    dob_year        = validate_date_year_field( context, 'date_of_birth_year'        )
+    dob_year_after  = validate_date_year_field( context, 'date_of_birth_year_after'  )
+    dob_year_before = validate_date_year_field( context, 'date_of_birth_year_before' )
+    validate_date_range( context, dob_year_after, dob_year_before )
+    return if context.response.halt_processing?
+
+    # Find the right data
     finder = Person.list_in( context )
 
-    # year
-    date_of_birth_year        = context.request.list.search_data[ 'date_of_birth_year'         ].to_i
-    date_of_birth_year_after  = context.request.list.search_data[ 'date_of_birth_year_after'   ].to_i
-    date_of_birth_year_before = context.request.list.search_data[ 'date_of_birth_year_before'  ].to_i
+    list   = finder.all.map { | person | render_in( context, person ) }
+    # Date of birth
+    finder = where_dob_exactly( finder, dob )
+    finder = where_dob_before( finder, dob_before )
+    finder = where_dob_after( finder, dob_after )
+    # Year Only
+    finder = where_dob_year_exactly( finder, dob_year )
+    finder = where_dob_year_before( finder, dob_year_before )
+    finder = where_dob_year_after( finder, dob_year_after )
 
-    # date of birth
-    date_of_birth             = context.request.list.search_data[ 'date_of_birth'              ].to_s
-    date_of_birth_after       = context.request.list.search_data[ 'date_of_birth_after'        ].to_s
-    date_of_birth_before      = context.request.list.search_data[ 'date_of_birth_before'       ].to_s
-
-    #minimum and maximum dates for postgres
-    minimum_date = Date.parse( '4713-01-01 BCE' )
-    maximum_date = Date.parse( '294276-01-01'   )
-
-    # If no values have been provided for any of the 'date of birth variables'
-    if date_of_birth.empty? & date_of_birth_before.empty? & date_of_birth_after.empty?
-      # search for an exact date of birth year
-      if date_of_birth_year_before.zero? & date_of_birth_year_after.zero? & !date_of_birth_year.zero?
-        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year ) ... Date.new( date_of_birth_year + 1 ) ) )
-      # Search for all entries before date of birth year.
-      elsif date_of_birth_year.zero? & date_of_birth_year_after.zero? & !date_of_birth_year_before.zero?
-        finder = finder.where( :date_of_birth => ( minimum_date ... Date.new( date_of_birth_year_before ) ) )
-      # Search for all entries after date of birth year
-      elsif date_of_birth_year.zero? & date_of_birth_year_before.zero? & !date_of_birth_year_after.zero?
-        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_after + 1 ) ... maximum_date ) )
-      # Search for all entries between two given dates - date_of_birth_year_before and date_of_birth_year_after.
-      elsif date_of_birth_year.zero? & !date_of_birth_year_before.zero? & !date_of_birth_year_after.zero?
-        finder = finder.where( :date_of_birth => ( Date.new( date_of_birth_year_after - 1 ) ... Date.new(date_of_birth_year_before + 1 ) ) )
-      end
-
-    # If no values have been provided for any of the 'date of birth year variables'
-    elsif date_of_birth_year.zero? & date_of_birth_year_before.zero? & date_of_birth_year_after.zero?
-      # Search for all entries that exactly equal the given date of birth.
-      if date_of_birth_before.empty? & date_of_birth_after.empty? & !date_of_birth.empty?
-        date_of_birth   = Date.parse( date_of_birth )
-        finder = finder.where( :date_of_birth => ( date_of_birth ... ( date_of_birth + 1.days   ) ) )
-      # Search for all entries before date of birth.
-      elsif date_of_birth.empty? & date_of_birth_after.empty? & !date_of_birth_before.empty?
-        finder = finder.where( :date_of_birth => ( minimum_date ... Date.parse( date_of_birth_before ) ) )
-      # Search for all entries after date of birth.
-      elsif date_of_birth.empty? & date_of_birth_before.empty? & !date_of_birth_after.empty?
-        finder = finder.where( :date_of_birth => ( Date.parse( date_of_birth_after ) ... maximum_date ) )
-      # Search for all entries between two given dates - date_of_birth_before and date_of_birth_after.
-      elsif date_of_birth.empty? & !date_of_birth_before.empty? & !date_of_birth_after.empty?
-        date_of_birth_before   = Date.parse( date_of_birth_before )
-        date_of_birth_after    = Date.parse( date_of_birth_after  )
-        finder = finder.where( :date_of_birth => ( ( date_of_birth_after - 1 ) ... ( date_of_birth_before + 1 ) ) )
-      end
-    end
-      list = finder.all.map { | person | render_in( context, person ) }
-      context.response.set_resources( list, finder.dataset_size )
+    list = finder.all.map { | person | render_in( context, person ) }
+    context.response.set_resources( list, finder.dataset_size )
   end
 
   def create( context )
@@ -127,5 +103,87 @@ class PersonImplementation < Hoodoo::Services::Implementation
       resource_fields,
       options
     )
+  end
+
+  def validate_date_field(context, key)
+    date = nil
+    if context.request.list.search_data.has_key?(key)
+      # Get the value of the key and parse as an iso8601 date. This will strip any time value from the timestamp
+      # before Hoodoo::Utilities validates that the 'key' date is in  the correct format.
+      key = context.request.list.search_data[ key ]
+      key = Date.parse( key ).iso8601()
+      date = Hoodoo::Utilities.valid_iso8601_subset_date?( key )
+      if date == false
+        context.response.add_error(
+          "generic.invalid_parameters",
+          message: "Invalid date",
+          reference: { field_names: "date_of_birth" }
+        )
+      end
+    end
+    return date
+  end
+
+  def validate_date_year_field(context, key)
+    date = nil
+    if context.request.list.search_data.has_key?(key)
+      key = context.request.list.search_data[ key ].to_i          # Converting the value to an integer will strip out any data after the hyphen i.e.(2000-01-01) will equal 2000
+      key = Date.new( key ).iso8601()                             # Convert to iso8601 format.
+      date = Hoodoo::Utilities.valid_iso8601_subset_date?( key )  # Validate that the date is iso8601 before returning the date.
+      if date == false
+        context.response.add_error(
+          "generic.invalid_parameters",
+          message: "Invalid date",
+          reference: { field_names: "date_of_birth" }
+        )
+      end
+    end
+    return date
+  end
+
+  def validate_date_range(context, date1, date2)
+    return if date1.nil? || date2.nil?
+      if date2 < date1
+        context.response.add_error(
+          'generic.invalid_parameters',
+          message: 'invalid date range date_of_birth_after should not be larger than date_of_birth_before',
+          reference:{ field_names: 'date_of_birth'}
+        )
+      end
+  end
+
+  # Date of birth
+  def where_dob_exactly( finder, date )
+    return finder if date.nil?
+    finder.where( 'date_of_birth::TIMESTAMP::DATE = ?::TIMESTAMP::DATE', date)
+  end
+
+  def where_dob_before( finder, date )
+    return finder if date.nil?
+    finder.where( 'date_of_birth::TIMESTAMP::DATE <= ?::TIMESTAMP::DATE', date)
+  end
+
+  def where_dob_after( finder, date )
+    return finder if date.nil?
+    finder.where( 'date_of_birth::TIMESTAMP::DATE >= ?::TIMESTAMP::DATE', date)
+  end
+
+  # Year only
+  def where_dob_year_exactly( finder, date )
+    return finder if date.nil?
+    year = (date).strftime("%Y")  # Extract year from the date passed into the method
+    finder.where( 'EXTRACT(YEAR FROM date_of_birth::TIMESTAMP::DATE) = ?', year)
+  end
+
+  def where_dob_year_before( finder, date )
+    return finder if date.nil?
+    year = (date).strftime("%Y")  # Extract year from the date passed into the method
+    finder.where( 'EXTRACT(YEAR FROM date_of_birth::TIMESTAMP::DATE) <= ?', year)
+  end
+
+  def where_dob_year_after( finder, date )
+    return finder if date.nil?
+    year = (date).strftime("%Y")  # Extract year from the date passed into the method
+    finder.where( 'EXTRACT(YEAR FROM date_of_birth::TIMESTAMP::DATE) >= ?', year)
   end
 end
