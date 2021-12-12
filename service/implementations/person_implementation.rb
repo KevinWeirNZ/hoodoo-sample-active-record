@@ -172,18 +172,21 @@ class PersonImplementation < Hoodoo::Services::Implementation
   def where_dob_year_exactly( finder, date )
     return finder if date.nil?
     year = (date).strftime("%Y")  # Extract year from the date passed into the method
+    # Extract the year from the date in the timestamp found in the date_of_birth column and compare it to the 'year' variable.
     finder.where( 'EXTRACT(YEAR FROM date_of_birth::TIMESTAMP::DATE) = ?', year)
   end
 
   def where_dob_year_before( finder, date )
     return finder if date.nil?
     year = (date).strftime("%Y")  # Extract year from the date passed into the method
+    # Extract the year from the date in the timestamp found in the date_of_birth column and compare it to the 'year' variable.
     finder.where( 'EXTRACT(YEAR FROM date_of_birth::TIMESTAMP::DATE) <= ?', year)
   end
 
   def where_dob_year_after( finder, date )
     return finder if date.nil?
     year = (date).strftime("%Y")  # Extract year from the date passed into the method
+    # Extract the year from the date in the timestamp found in the date_of_birth column and compare it to the 'year' variable.
     finder.where( 'EXTRACT(YEAR FROM date_of_birth::TIMESTAMP::DATE) >= ?', year)
   end
 end
