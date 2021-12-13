@@ -143,13 +143,13 @@ class PersonImplementation < Hoodoo::Services::Implementation
 
   def validate_date_range(context, date1, date2)
     return if date1.nil? || date2.nil?
-      if date2 < date1
-        context.response.add_error(
-          'generic.invalid_parameters',
-          message: 'invalid date range date_of_birth_after should not be larger than date_of_birth_before',
-          reference:{ field_names: 'date_of_birth'}
-        )
-      end
+    if date2 < date1
+      context.response.add_error(
+        'generic.invalid_parameters',
+        message: 'invalid date range date_of_birth_after should not be larger than date_of_birth_before',
+        reference:{ field_names: 'date_of_birth'}
+      )
+    end
   end
 
   # Date of birth
